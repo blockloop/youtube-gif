@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -eu
+set -o pipefail
+
+YTDL=$(command -v youtube-dl)
+CONVERT=$(command -v convert)
+FFMPEG=$(command -v ffmpeg)
+
+ME="$(basename "$0")"
+URL="${1:-}"
+START="${2:-}"
+LEN="${3:-}"
+
+if [ -z "${URL}" ] || [ -z "${START}" ] || [ -z "${LEN}" ]; then
+	cat <<-EOF > /dev/stderr
+	  Usage:   $ME <youtube_url> <start_time|HH:MM:SS.mmm> <length|HH:MM:SS.mmm>
+	  Example: $ME 'youtube.com/?video=asdf' '00:00:21.000' '00:00:03.000'
+	EOF
+	exit 1
+fi
+
+RND=$(uuidgen -r)
+TITLE="$(${YTDL} --get-title -f 18 "$URL" | tr -cd '[:print:]')"
+${FFMPEG} \
+	-i "$(youtube-dl -f 18 --get-url "$URL")" \
+	-ss "${START}" \
+	-pix_fmt rgb24 \
+	-r 10 \
+	-vf 'scale=400:-1' \
+	-t "${LEN}" \
+	"$RND.gif"
+
+${CONVERT} -layers Optimize "$RND.gif" "$TITLE.gif"
+rm "$RND.gif"
